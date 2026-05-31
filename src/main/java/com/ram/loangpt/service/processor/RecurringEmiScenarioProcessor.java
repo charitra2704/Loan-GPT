@@ -30,18 +30,18 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                     (principal * rate * Math.pow(1+rate, months)) /
                             (Math.pow(1 + rate, months) - 1);
             BigDecimal installmentAmount= BigDecimal.valueOf(value)
-                    .setScale(0, RoundingMode.HALF_EVEN);
+                    .setScale(0, RoundingMode.HALF_UP);
             schedule.setInstallmentAmount(installmentAmount);
 
             //Calculate total Interest
             double totalInterest=(value*months)-principal;
             BigDecimal totalInterestPayable=BigDecimal.valueOf(totalInterest)
-                    .setScale(0, RoundingMode.HALF_EVEN);
+                    .setScale(0, RoundingMode.HALF_UP);
             schedule.setTotalInterestPayable(totalInterestPayable);
 
             //Calculate Total Payment
             double payment=value*months;
-            BigDecimal totalPayment=BigDecimal.valueOf(payment).setScale(0,RoundingMode.HALF_EVEN);
+            BigDecimal totalPayment=BigDecimal.valueOf(payment).setScale(0,RoundingMode.HALF_UP);
             schedule.setTotalPayment(totalPayment);
 
             List<ScheduleEntry> scheduleEntries=new ArrayList<>();
@@ -55,17 +55,17 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                 scheduleEntry.setInstallmentAmount(installmentAmount);
 
                 double interest=current_outstandingPrincipal.doubleValue()*rate;
-                BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_EVEN);
+                BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
                 scheduleEntry.setInterest(interestPaid);
 
                 double principal_entry=value-interest;
                 BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                        setScale(0,RoundingMode.HALF_EVEN);
+                        setScale(0,RoundingMode.HALF_UP);
                 scheduleEntry.setPrincipal(principalPaid);
 
                 double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                 BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                        setScale(0,RoundingMode.HALF_EVEN);
+                        setScale(0,RoundingMode.HALF_UP);
                 scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
                 current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
 
@@ -87,21 +87,31 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
 
                         value+=(value*emiRateChange);
                         installmentAmount=BigDecimal.valueOf(value)
-                                .setScale(0, RoundingMode.HALF_EVEN);
+                                .setScale(0, RoundingMode.HALF_UP);
                         scheduleEntry.setInstallmentAmount(installmentAmount);
 
                         double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_EVEN);
+                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
                         scheduleEntry.setInterest(interestPaid);
+
+                        //If final payment becomes less than installment amount
+                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
+                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
+                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                            scheduleEntry.setInstallmentAmount(finalPayment);
+                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                            scheduleEntries.add(scheduleEntry);
+                            break;
+                        }
 
                         double principal_entry=value-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                         BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
                         current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
 
@@ -123,22 +133,32 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                         if((month-startMonth)%3==0){
                             value+=(value*emiRateChange);
                             installmentAmount=BigDecimal.valueOf(value)
-                                    .setScale(0, RoundingMode.HALF_EVEN);
+                                    .setScale(0, RoundingMode.HALF_UP);
                         }
                         scheduleEntry.setInstallmentAmount(installmentAmount);
 
                         double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_EVEN);
+                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
                         scheduleEntry.setInterest(interestPaid);
+
+                        //If final payment becomes less than installment amount
+                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
+                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
+                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                            scheduleEntry.setInstallmentAmount(finalPayment);
+                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                            scheduleEntries.add(scheduleEntry);
+                            break;
+                        }
 
                         double principal_entry=value-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                         BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
                         current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
 
@@ -161,23 +181,33 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                         if((month-startMonth)%12==0){
                             value+=(value*emiRateChange);
                             installmentAmount=BigDecimal.valueOf(value)
-                                    .setScale(0, RoundingMode.HALF_EVEN);
+                                    .setScale(0, RoundingMode.HALF_UP);
                         }
                         scheduleEntry.setInstallmentAmount(installmentAmount);
 
                         double interest=current_outstandingPrincipal.doubleValue()*rate;
                         System.out.println(current_outstandingPrincipal+" " +interest);
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_EVEN);
+                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
                         scheduleEntry.setInterest(interestPaid);
+
+                        //If final payment becomes less than installment amount
+                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
+                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
+                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                            scheduleEntry.setInstallmentAmount(finalPayment);
+                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                            scheduleEntries.add(scheduleEntry);
+                            break;
+                        }
 
                         double principal_entry=value-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                         BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
                         current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
 
@@ -201,23 +231,33 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                         if((month-startMonth)%6==0) {
                             value+=(value*emiRateChange);
                             installmentAmount=BigDecimal.valueOf(value)
-                                    .setScale(0, RoundingMode.HALF_EVEN);
+                                    .setScale(0, RoundingMode.HALF_UP);
                         }
                         scheduleEntry.setInstallmentAmount(installmentAmount);
 
                         double interest=current_outstandingPrincipal.doubleValue()*rate;
                         System.out.println(current_outstandingPrincipal+" " +interest);
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_EVEN);
+                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
                         scheduleEntry.setInterest(interestPaid);
+
+                        //If final payment becomes less than installment amount
+                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
+                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
+                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                            scheduleEntry.setInstallmentAmount(finalPayment);
+                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                            scheduleEntries.add(scheduleEntry);
+                            break;
+                        }
 
                         double principal_entry=value-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                         BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                                setScale(0,RoundingMode.HALF_EVEN);
+                                setScale(0,RoundingMode.HALF_UP);
                         scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
                         current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
 
