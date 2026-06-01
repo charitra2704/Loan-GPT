@@ -14,6 +14,7 @@ public class ScheduleEntry {
     private BigDecimal principal;
     private BigDecimal interest;
     private BigDecimal outstandingPrincipal;
+    private BigDecimal extraPayment;
 
     public Integer getInstallmentNumber() {
         return installmentNumber;
@@ -53,5 +54,13 @@ public class ScheduleEntry {
 
     public void setOutstandingPrincipal(BigDecimal outstandingPrincipal) {
         this.outstandingPrincipal = outstandingPrincipal;
+    }
+
+    public BigDecimal getExtraPayment() {
+        return extraPayment;
+    }
+
+    public void setExtraPayment(BigDecimal extraPayment) {
+        this.extraPayment = extraPayment;
     }
 }

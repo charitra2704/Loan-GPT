@@ -19,66 +19,23 @@ public class InterestRateChangeScenarioProcessor implements ScenarioProcessor {
             int startMonth=scenario.getStartMonth();
             int month=1;
 
-            //Calculate Installment Amount
             double rate = loanParameters.getInterestRate().doubleValue() / 12 / 100;
-            int months = loanParameters.getTenureInMonths();
-            double principal=loanParameters.getPrincipal().doubleValue();
-            double value =
-                    (principal * rate * Math.pow(1+rate, months)) /
-                            (Math.pow(1 + rate, months) - 1);
-            BigDecimal installmentAmount= BigDecimal.valueOf(value)
-                    .setScale(0, RoundingMode.HALF_UP);
-            schedule.setInstallmentAmount(installmentAmount);
-
-            //Calculate total Interest
-            double totalInterest=(value*months)-principal;
-            BigDecimal totalInterestPayable=BigDecimal.valueOf(totalInterest)
-                    .setScale(0, RoundingMode.HALF_UP);
-            schedule.setTotalInterestPayable(totalInterestPayable);
-
-            //Calculate Total Payment
-            double payment=value*months;
-            BigDecimal totalPayment=BigDecimal.valueOf(payment).setScale(0,RoundingMode.HALF_UP);
-            schedule.setTotalPayment(totalPayment);
-
-            List<ScheduleEntry> scheduleEntries=new ArrayList<>();
-
-            BigDecimal current_outstandingPrincipal=loanParameters.getPrincipal();
+            List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
 
             //Till the month interest rate change is same schedule is as usual
             while(month<startMonth){
-                ScheduleEntry scheduleEntry=new ScheduleEntry();
-                scheduleEntry.setInstallmentNumber(month);
-                scheduleEntry.setInstallmentAmount(installmentAmount);
-
-                double interest=current_outstandingPrincipal.doubleValue()*rate;
-                BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                scheduleEntry.setInterest(interestPaid);
-
-                double principal_entry=value-interest;
-                BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                        setScale(0,RoundingMode.HALF_UP);
-                scheduleEntry.setPrincipal(principalPaid);
-
-                double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
-                BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                        setScale(0,RoundingMode.HALF_UP);
-                scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
-                current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
-
-
-                scheduleEntries.add(scheduleEntry);
-
                 month++;
             }
+
+            BigDecimal current_outstandingPrincipal=scheduleEntries.get(month-2).getOutstandingPrincipal();
 
             BigDecimal interestRateChangeScenarioChangedRate=interestRateChangeScenario.getChangedRate();
             double changedRate=interestRateChangeScenarioChangedRate.doubleValue()/12/100;
 
             do{
-                ScheduleEntry scheduleEntry=new ScheduleEntry();
+                ScheduleEntry scheduleEntry= scheduleEntries.get(month-1);
                 scheduleEntry.setInstallmentNumber(month);
-                scheduleEntry.setInstallmentAmount(installmentAmount);
+                scheduleEntry.setInstallmentAmount(schedule.getInstallmentAmount());
 
                 if(month==startMonth)
                     rate=changedRate;
@@ -96,7 +53,7 @@ public class InterestRateChangeScenarioProcessor implements ScenarioProcessor {
                     break;
                 }
 
-                double principal_entry=value-interest;
+                double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                 BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
                         setScale(0,RoundingMode.HALF_UP);
                 scheduleEntry.setPrincipal(principalPaid);

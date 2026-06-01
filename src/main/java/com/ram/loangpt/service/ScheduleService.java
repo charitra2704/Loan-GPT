@@ -73,6 +73,7 @@ public class ScheduleService {
                     setScale(0,RoundingMode.HALF_UP);
             scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
             current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
+            scheduleEntry.setExtraPayment(BigDecimal.ZERO);
 
             scheduleEntries.add(scheduleEntry);
         }
@@ -84,6 +85,17 @@ public class ScheduleService {
             for (Scenario scenario : scenarios) {
                 ScenarioProcessor scenarioProcessor = scenarioProcessorFactory.getScenarioProcessor(scenario.getScenarioType());
                 schedule=scenarioProcessor.processScenario(scenario, schedule, loanParameters);
+
+                List<ScheduleEntry> entries = schedule.getSchedule();
+
+                for(int i = 0; i < entries.size(); i++){
+                    if(entries.get(i)
+                            .getOutstandingPrincipal()
+                            .compareTo(BigDecimal.ZERO) == 0){
+                        entries.subList(i + 1, entries.size()).clear();
+                        break;
+                    }
+                }
             }
         }
 
