@@ -34,7 +34,7 @@ public class ScheduleService {
                 (principal * rate * Math.pow(1+rate, months)) /
                         (Math.pow(1 + rate, months) - 1);
         BigDecimal installmentAmount= BigDecimal.valueOf(value)
-                .setScale(0, RoundingMode.HALF_UP);
+                .setScale(2, RoundingMode.HALF_UP);
         schedule.setInstallmentAmount(installmentAmount);
 
         //Calculate total Interest
@@ -65,12 +65,12 @@ public class ScheduleService {
 
             double principal_entry=value-interest;
             BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                    setScale(0,RoundingMode.HALF_UP);
+                    setScale(2,RoundingMode.HALF_UP);
             scheduleEntry.setPrincipal(principalPaid);
 
             double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
             BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                    setScale(0,RoundingMode.HALF_UP);
+                    setScale(2,RoundingMode.HALF_UP);
             scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
             current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
             scheduleEntry.setExtraPayment(BigDecimal.ZERO);

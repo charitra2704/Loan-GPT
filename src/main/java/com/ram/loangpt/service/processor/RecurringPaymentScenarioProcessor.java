@@ -60,7 +60,7 @@ public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
 
                         double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_UP);
+                                setScale(2,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         current_outstandingPrincipal=current_outstandingPrincipal.subtract(recurringAmount);
@@ -99,7 +99,7 @@ public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
 
                         double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_UP);
+                                setScale(2,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         if((month-startMonth)%3==0) {
@@ -143,7 +143,7 @@ public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
 
                         double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_UP);
+                                setScale(2,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         if((month-startMonth)%12==0) {
@@ -187,7 +187,7 @@ public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
 
                         double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                         BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(0,RoundingMode.HALF_UP);
+                                setScale(2  ,RoundingMode.HALF_UP);
                         scheduleEntry.setPrincipal(principalPaid);
 
                         if((month-startMonth)%6==0){

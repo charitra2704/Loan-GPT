@@ -51,12 +51,12 @@ public class LumpsumPaymentScenarioProcessor implements ScenarioProcessor {
 
                 double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
                 BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                        setScale(0,RoundingMode.HALF_UP);
+                        setScale(2,RoundingMode.HALF_UP);
                 scheduleEntry.setPrincipal(principalPaid);
 
                 double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
                 BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                        setScale(0,RoundingMode.HALF_UP);
+                        setScale(2,RoundingMode.HALF_UP);
                 if(month==startMonth) {
                     outstandingPrincipal_entry = outstandingPrincipal_entry.subtract(lumpSumAmount);
                     scheduleEntry.setExtraPayment(lumpSumAmount);

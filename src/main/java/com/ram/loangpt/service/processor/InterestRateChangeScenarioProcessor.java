@@ -32,45 +32,88 @@ public class InterestRateChangeScenarioProcessor implements ScenarioProcessor {
             BigDecimal interestRateChangeScenarioChangedRate=interestRateChangeScenario.getChangedRate();
             double changedRate=interestRateChangeScenarioChangedRate.doubleValue()/12/100;
 
-            do{
-                ScheduleEntry scheduleEntry= scheduleEntries.get(month-1);
-                scheduleEntry.setInstallmentNumber(month);
-                scheduleEntry.setInstallmentAmount(schedule.getInstallmentAmount());
+                do {
+                    ScheduleEntry scheduleEntry = scheduleEntries.get(month - 1);
+                    scheduleEntry.setInstallmentNumber(month);
+                    scheduleEntry.setInstallmentAmount(schedule.getInstallmentAmount());
+                    scheduleEntry.setExtraPayment(BigDecimal.ZERO);
 
-                if(month==startMonth)
-                    rate=changedRate;
-                double interest=current_outstandingPrincipal.doubleValue()*rate;
-                BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                scheduleEntry.setInterest(interestPaid);
+                    if (month >= startMonth)
+                        rate = changedRate;
+                    double interest = current_outstandingPrincipal.doubleValue() * rate;
+                    BigDecimal interestPaid = BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
+                    scheduleEntry.setInterest(interestPaid);
 
-                //If final payment becomes less than installment amount
-                BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
-                if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
-                    scheduleEntry.setPrincipal(current_outstandingPrincipal);
-                    scheduleEntry.setInstallmentAmount(finalPayment);
-                    scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
-                    scheduleEntries.add(scheduleEntry);
-                    break;
+                    //If final payment becomes less than installment amount
+                    BigDecimal finalPayment = current_outstandingPrincipal.add(interestPaid);
+                    if (finalPayment.compareTo(scheduleEntry.getInstallmentAmount()) <= 0) {
+                        scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                        scheduleEntry.setInstallmentAmount(finalPayment);
+                        scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                        scheduleEntries.add(scheduleEntry);
+                        break;
+                    }
+
+                    double principal_entry = scheduleEntry.getInstallmentAmount().doubleValue() - interest;
+                    BigDecimal principalPaid = BigDecimal.valueOf(principal_entry).
+                            setScale(2, RoundingMode.HALF_UP);
+                    scheduleEntry.setPrincipal(principalPaid);
+
+                    double outstandingPrincipal = current_outstandingPrincipal.doubleValue() - principal_entry;
+                    BigDecimal outstandingPrincipal_entry = BigDecimal.valueOf(outstandingPrincipal).
+                            setScale(2, RoundingMode.HALF_UP);
+                    scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
+                    current_outstandingPrincipal = scheduleEntry.getOutstandingPrincipal();
+
+                    month++;
+                    if(month>scheduleEntries.size()) {
+                        break;
+                    }
                 }
+                while (current_outstandingPrincipal.compareTo(BigDecimal.ZERO) > 0);
 
-                double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
-                BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                        setScale(0,RoundingMode.HALF_UP);
-                scheduleEntry.setPrincipal(principalPaid);
+            if(month>scheduleEntries.size() && current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0) {
+                do {
+                    ScheduleEntry scheduleEntry = new ScheduleEntry();
+                    scheduleEntry.setInstallmentNumber(month);
+                    scheduleEntry.setInstallmentAmount(scheduleEntries.get(month - 2).getInstallmentAmount());
+                    scheduleEntry.setExtraPayment(BigDecimal.ZERO);
 
-                double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
-                BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                        setScale(0,RoundingMode.HALF_UP);
-                scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
-                current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
+                    double interest = current_outstandingPrincipal.doubleValue() * rate;
+                    BigDecimal interestPaid = BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
+                    scheduleEntry.setInterest(interestPaid);
 
+                    //If final payment becomes less than installment amount
+                    BigDecimal finalPayment = current_outstandingPrincipal.add(interestPaid);
+                    if (finalPayment.compareTo(scheduleEntry.getInstallmentAmount()) <= 0) {
+                        scheduleEntry.setPrincipal(current_outstandingPrincipal);
+                        scheduleEntry.setInstallmentAmount(finalPayment);
+                        scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
+                        scheduleEntries.add(scheduleEntry);
+                        break;
+                    }
 
-                scheduleEntries.add(scheduleEntry);
+                    double principal_entry = scheduleEntry.getInstallmentAmount().doubleValue() - interest;
+                    BigDecimal principalPaid = BigDecimal.valueOf(principal_entry).
+                            setScale(2, RoundingMode.HALF_UP);
+                    if(principalPaid.compareTo(BigDecimal.ZERO) <= 0){
+                        throw new IllegalArgumentException(
+                                "Loan cannot be repaid with current EMI and interest rate"
+                        );
+                    }
+                    scheduleEntry.setPrincipal(principalPaid);
 
-                month++;
+                    double outstandingPrincipal = current_outstandingPrincipal.doubleValue() - principal_entry;
+                    BigDecimal outstandingPrincipal_entry = BigDecimal.valueOf(outstandingPrincipal).
+                            setScale(2, RoundingMode.HALF_UP);
+                    scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
+                    current_outstandingPrincipal = scheduleEntry.getOutstandingPrincipal();
+                    scheduleEntries.add(scheduleEntry);
+
+                    month++;
+
+                }while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO) > 0);
             }
-            while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0);
-
             schedule.setSchedule(scheduleEntries);
             }
      else {

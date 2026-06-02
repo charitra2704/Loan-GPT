@@ -1,6 +1,5 @@
 package com.ram.loangpt.service.processor;
 
-import com.ram.loangpt.dto.Scenario;
 import com.ram.loangpt.enums.ScenarioType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -34,7 +33,7 @@ public class ScenarioProcessorFactory {
             case ScenarioType.INTEREST_RATE_CHANGE -> {
                 return interestRateChangeScenarioProcessor;
             }
-            case ScenarioType.RECURRING_EMI_INCREASE -> {
+            case ScenarioType.RECURRING_EMI_CHANGE -> {
                 return recurringEmiScenarioProcessor;
             }
             case ScenarioType.RECURRING_PREPAYMENT -> {
