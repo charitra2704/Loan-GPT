@@ -2,10 +2,10 @@ package com.ram.loangpt.service.processor;
 
 import com.ram.loangpt.dto.*;
 import com.ram.loangpt.enums.FrequencyType;
+import com.ram.loangpt.utils.FinanceUtil;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,205 +14,51 @@ import java.util.List;
  **/
 @Service
 public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
-    public Schedule processScenario(Scenario scenario,
-                                    Schedule schedule, LoanParameters loanParameters){
+    public List<ScheduleEntry> processScenario(Scenario scenario,
+                                               List<ScheduleEntry> schedule, LoanParameters loanParameters){
         if(scenario instanceof RecurringPaymentScenario recurringPaymentScenario) {
 
-            int startMonth=scenario.getStartMonth();
-            int month=1;
-
-            double rate = loanParameters.getInterestRate().doubleValue() / 12 / 100;
-
-            List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
-
-            //Till the month Recurring payment starts schedule is as usual
-            while(month<startMonth){
-                scheduleEntries.get(month-1).setExtraPayment(BigDecimal.ZERO);
-                month++;
-            }
-
-            BigDecimal current_outstandingPrincipal=scheduleEntries.get(month-2).getOutstandingPrincipal();
-            BigDecimal recurringAmount=recurringPaymentScenario.getAmount();
             FrequencyType frequencyType=recurringPaymentScenario.getFrequencyType();
 
-            switch(frequencyType){
-                case FrequencyType.MONTHLY -> {
+            int frequencyFactor = switch (frequencyType) {
+                case MONTHLY -> 1;
+                case QUARTERLY -> 3;
+                case ANNUALLY -> 12;
+                case SEMI_ANNUALLY -> 6;
+            };
+                    BigDecimal currentOutstandingPrincipal = BigDecimal.ZERO;
+                    List<ScheduleEntry> response = new ArrayList<>();
 
-                    do{
-                        ScheduleEntry scheduleEntry=scheduleEntries.get(month-1);
-                        scheduleEntry.setInstallmentNumber(month);
-                        scheduleEntry.setInstallmentAmount(scheduleEntry.getInstallmentAmount());
-                        scheduleEntry.setExtraPayment(recurringAmount);
-
-                        double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                        scheduleEntry.setInterest(interestPaid);
-
-                        //If final payment becomes less than installment amount
-                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
-                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
-                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
-                            scheduleEntry.setInstallmentAmount(finalPayment);
-                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
-                            scheduleEntries.add(scheduleEntry);
-                            break;
+                    for (ScheduleEntry sc: schedule) {
+                        if(sc.getInstallmentNumber()<scenario.getStartMonth()) {
+                            currentOutstandingPrincipal = sc.getOutstandingPrincipal();
                         }
+                        else {
+                            if (((sc.getInstallmentNumber()) - (recurringPaymentScenario.getStartMonth())) % frequencyFactor == 0) {
+                                sc.setExtraPayment(sc.getExtraPayment().add(recurringPaymentScenario.getAmount()));
+                            }
 
-                        double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
-                        BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(2,RoundingMode.HALF_UP);
-                        scheduleEntry.setPrincipal(principalPaid);
+                            sc.setInterest(FinanceUtil.calculateInterest(currentOutstandingPrincipal, loanParameters.getInterestRate()));
+                            sc.setPrincipal(sc.getInstallmentAmount().subtract(sc.getInterest()));
+                            sc.setOutstandingPrincipal(
+                                    currentOutstandingPrincipal.subtract(sc.getPrincipal().add(sc.getExtraPayment()))
+                            );
 
-                        current_outstandingPrincipal=current_outstandingPrincipal.subtract(recurringAmount);
-                        current_outstandingPrincipal=current_outstandingPrincipal.subtract(principalPaid);
-                        scheduleEntry.setOutstandingPrincipal(current_outstandingPrincipal);
-                        current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
-
-                        month++;
-                    }
-                    while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0);
-
-                    schedule.setSchedule(scheduleEntries);
-                    return schedule;
-
-                }
-                case FrequencyType.QUARTERLY -> {
-
-                    do{
-                        ScheduleEntry scheduleEntry=scheduleEntries.get(month-1);
-                        scheduleEntry.setInstallmentNumber(month);
-                        scheduleEntry.setInstallmentAmount(scheduleEntry.getInstallmentAmount());
-
-                        double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                        scheduleEntry.setInterest(interestPaid);
-
-                        //If final payment becomes less than installment amount
-                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
-                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
-                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
-                            scheduleEntry.setInstallmentAmount(finalPayment);
-                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
-                            scheduleEntries.add(scheduleEntry);
-                            break;
+                            BigDecimal finalPayment = currentOutstandingPrincipal.add(sc.getInterest());
+                            if (finalPayment.compareTo(sc.getInstallmentAmount().add(sc.getExtraPayment())) <= 0) {
+                                sc.setPrincipal(currentOutstandingPrincipal);
+                                sc.setInstallmentAmount(finalPayment);
+                                sc.setOutstandingPrincipal(BigDecimal.ZERO);
+                                response.add(sc);
+                                break;
+                            }
+                            currentOutstandingPrincipal = sc.getOutstandingPrincipal();
+                            }
+                        response.add(sc);
                         }
-
-                        double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
-                        BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(2,RoundingMode.HALF_UP);
-                        scheduleEntry.setPrincipal(principalPaid);
-
-                        if((month-startMonth)%3==0) {
-                            current_outstandingPrincipal = current_outstandingPrincipal.subtract(recurringAmount);
-                            scheduleEntry.setExtraPayment(recurringAmount);
-                        }else{
-                            scheduleEntry.setExtraPayment(BigDecimal.ZERO);
-                        }
-                        current_outstandingPrincipal=current_outstandingPrincipal.subtract(principalPaid);
-                        scheduleEntry.setOutstandingPrincipal(current_outstandingPrincipal);
-                        current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
-
-                        month++;
-                    }
-                    while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0);
-
-                    schedule.setSchedule(scheduleEntries);
-                    return schedule;
-
-                }
-                case FrequencyType.ANNUALLY -> {
-
-                    do{
-                        ScheduleEntry scheduleEntry=scheduleEntries.get(month-1);
-                        scheduleEntry.setInstallmentNumber(month);
-                        scheduleEntry.setInstallmentAmount(scheduleEntry.getInstallmentAmount());
-
-                        double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                        scheduleEntry.setInterest(interestPaid);
-
-                        //If final payment becomes less than installment amount
-                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
-                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
-                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
-                            scheduleEntry.setInstallmentAmount(finalPayment);
-                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
-                            break;
-                        }
-
-
-                        double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
-                        BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(2,RoundingMode.HALF_UP);
-                        scheduleEntry.setPrincipal(principalPaid);
-
-                        if((month-startMonth)%12==0) {
-                            current_outstandingPrincipal = current_outstandingPrincipal.subtract(recurringAmount);
-                            scheduleEntry.setExtraPayment(recurringAmount);
-                        }else{
-                            scheduleEntry.setExtraPayment(BigDecimal.ZERO);
-                        }
-                        current_outstandingPrincipal=current_outstandingPrincipal.subtract(principalPaid);
-                        scheduleEntry.setOutstandingPrincipal(current_outstandingPrincipal);
-                        current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
-
-                        month++;
-                    }
-                    while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0);
-
-                    schedule.setSchedule(scheduleEntries);
-                    return schedule;
-
-                }
-                case FrequencyType.SEMI_ANNUALLY -> {
-
-                    do{
-                        ScheduleEntry scheduleEntry=scheduleEntries.get(month-1);
-                        scheduleEntry.setInstallmentNumber(month);
-                        scheduleEntry.setInstallmentAmount(scheduleEntry.getInstallmentAmount());
-
-                        double interest=current_outstandingPrincipal.doubleValue()*rate;
-                        BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0, RoundingMode.HALF_UP);
-                        scheduleEntry.setInterest(interestPaid);
-
-                        //If final payment becomes less than installment amount
-                        BigDecimal finalPayment=current_outstandingPrincipal.add(interestPaid);
-                        if(finalPayment.compareTo(scheduleEntry.getInstallmentAmount())<=0){
-                            scheduleEntry.setPrincipal(current_outstandingPrincipal);
-                            scheduleEntry.setInstallmentAmount(finalPayment);
-                            scheduleEntry.setOutstandingPrincipal(BigDecimal.valueOf(0));
-                            scheduleEntries.add(scheduleEntry);
-                            break;
-                        }
-
-                        double principal_entry=scheduleEntry.getInstallmentAmount().doubleValue()-interest;
-                        BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                                setScale(2  ,RoundingMode.HALF_UP);
-                        scheduleEntry.setPrincipal(principalPaid);
-
-                        if((month-startMonth)%6==0){
-                            current_outstandingPrincipal=current_outstandingPrincipal.subtract(recurringAmount);
-                            scheduleEntry.setExtraPayment(recurringAmount);
-                        }else{
-                            scheduleEntry.setExtraPayment(BigDecimal.ZERO);
-                        }
-                        current_outstandingPrincipal=current_outstandingPrincipal.subtract(principalPaid);
-                        scheduleEntry.setOutstandingPrincipal(current_outstandingPrincipal);
-                        current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
-
-                        month++;
-                    }
-                    while(current_outstandingPrincipal.compareTo(BigDecimal.ZERO)>0);
-
-                    schedule.setSchedule(scheduleEntries);
-                    return schedule;
-
-                }
-                default -> {
-                    throw new IllegalArgumentException("Invalid Frequency type "+frequencyType);
-                }
-            }
-        } else {
+            return response;
+        }
+        else {
             throw new IllegalArgumentException("Invalid Scenario");
         }
     }

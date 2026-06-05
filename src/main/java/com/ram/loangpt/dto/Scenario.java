@@ -16,7 +16,6 @@ import com.ram.loangpt.enums.ScenarioType;
 @JsonSubTypes({
         @JsonSubTypes.Type(value = LumpSumPaymentScenario.class, name = "LUMP_SUM_PREPAYMENT"),
         @JsonSubTypes.Type(value = RecurringPaymentScenario.class, name = "RECURRING_PREPAYMENT"),
-        @JsonSubTypes.Type(value = InterestRateChangeScenario.class, name = "INTEREST_RATE_CHANGE"),
         @JsonSubTypes.Type(value = RecurringEmiChangeScenario.class, name = "RECURRING_EMI_CHANGE")
 })
 public abstract class Scenario {

@@ -2,10 +2,11 @@ package com.ram.loangpt.service;
 
 import com.ram.loangpt.dto.*;
 import com.ram.loangpt.service.processor.*;
+import com.ram.loangpt.utils.FinanceUtil;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,84 +22,81 @@ public class ScheduleService {
     }
 
     public Schedule generateSchedule(LoanRequest loanRequest) {
-        //Create a new Schedule
-        Schedule schedule=new Schedule();
-
-
         LoanParameters loanParameters = loanRequest.getLoanParameters();
+
         //Calculate Installment Amount
-        double rate = loanParameters.getInterestRate().doubleValue() / 12 / 100;
-        int months = loanParameters.getTenureInMonths();
-        double principal=loanParameters.getPrincipal().doubleValue();
-        double value =
-                (principal * rate * Math.pow(1+rate, months)) /
-                        (Math.pow(1 + rate, months) - 1);
-        BigDecimal installmentAmount= BigDecimal.valueOf(value)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal installmentAmount = FinanceUtil.pmt(
+                loanParameters.getPrincipal(),
+                loanParameters.getInterestRate(),
+                loanParameters.getTenureInMonths()
+        );
+
+        List<ScheduleEntry> scheduleEntries = generateSchedule(loanParameters, installmentAmount);
+
+        List<Scenario> scenarios = loanRequest.getScenarios();
+        if(!CollectionUtils.isEmpty(scenarios)) {
+            for (Scenario scenario : scenarios) {
+                ScenarioProcessor scenarioProcessor = scenarioProcessorFactory
+                        .getScenarioProcessor(scenario.getScenarioType());
+                scheduleEntries = scenarioProcessor
+                        .processScenario(scenario, scheduleEntries, loanParameters);
+            }
+        }else{
+            ScheduleEntry last=scheduleEntries.getLast();
+            last.setOutstandingPrincipal(BigDecimal.ZERO);
+        }
+        return prepareResponse(installmentAmount, scheduleEntries);
+    }
+
+    private static Schedule prepareResponse(BigDecimal installmentAmount, List<ScheduleEntry> scheduleEntries) {
+        Schedule schedule=new Schedule();
         schedule.setInstallmentAmount(installmentAmount);
 
-        //Calculate total Interest
-        double totalInterest=(value*months)-principal;
-        BigDecimal totalInterestPayable=BigDecimal.valueOf(totalInterest)
-                .setScale(0, RoundingMode.HALF_UP);
+        //Calculate total Interest Paid
+        BigDecimal totalInterestPayable= scheduleEntries.stream()
+                .map(ScheduleEntry::getInterest)
+                .reduce(BigDecimal.ZERO,BigDecimal::add);
         schedule.setTotalInterestPayable(totalInterestPayable);
 
-        //Calculate Total Payment
-        double payment=value*months;
-        BigDecimal totalPayment=BigDecimal.valueOf(payment).setScale(0,RoundingMode.HALF_UP);
+        //Calculate total Principal paid
+        BigDecimal totalPrincipalPaid= scheduleEntries.stream()
+                        .map(sc -> sc.getPrincipal().add(sc.getExtraPayment()))
+                        .reduce(BigDecimal.ZERO,BigDecimal::add);
+
+        BigDecimal totalPayment=totalPrincipalPaid.add(totalInterestPayable);
         schedule.setTotalPayment(totalPayment);
 
-        //Create a Schedule Entry
+
+        schedule.setSchedule(scheduleEntries);
+        return schedule;
+    }
+
+    private static List<ScheduleEntry> generateSchedule(LoanParameters loanParameters, BigDecimal installmentAmount) {
+        int numberOfMonths = loanParameters.getTenureInMonths();
+
+        //Create a Schedule Entry List
         List<ScheduleEntry> scheduleEntries=new ArrayList<>();
 
-        BigDecimal current_outstandingPrincipal=loanParameters.getPrincipal();
-        for(int month=1;month<=months;month++){
+        BigDecimal currentOutstandingPrincipal= loanParameters.getPrincipal();
+        for(int month=1;month<=numberOfMonths;month++){
 
             ScheduleEntry scheduleEntry=new ScheduleEntry();
 
             scheduleEntry.setInstallmentNumber(month);
             scheduleEntry.setInstallmentAmount(installmentAmount);
 
-            double interest=current_outstandingPrincipal.doubleValue()*rate;
-            BigDecimal interestPaid=BigDecimal.valueOf(interest).setScale(0,RoundingMode.HALF_UP);
+            BigDecimal interestPaid=FinanceUtil.calculateInterest(currentOutstandingPrincipal, loanParameters.getInterestRate());
             scheduleEntry.setInterest(interestPaid);
 
-            double principal_entry=value-interest;
-            BigDecimal principalPaid=BigDecimal.valueOf(principal_entry).
-                    setScale(2,RoundingMode.HALF_UP);
+            BigDecimal principalPaid= installmentAmount.subtract(interestPaid);
             scheduleEntry.setPrincipal(principalPaid);
 
-            double outstandingPrincipal=current_outstandingPrincipal.doubleValue()-principal_entry;
-            BigDecimal outstandingPrincipal_entry=BigDecimal.valueOf(outstandingPrincipal).
-                    setScale(2,RoundingMode.HALF_UP);
-            scheduleEntry.setOutstandingPrincipal(outstandingPrincipal_entry);
-            current_outstandingPrincipal=scheduleEntry.getOutstandingPrincipal();
+            currentOutstandingPrincipal = currentOutstandingPrincipal.subtract(principalPaid);
+            scheduleEntry.setOutstandingPrincipal(currentOutstandingPrincipal);
             scheduleEntry.setExtraPayment(BigDecimal.ZERO);
-
             scheduleEntries.add(scheduleEntry);
         }
 
-        schedule.setSchedule(scheduleEntries);
-
-        List<Scenario> scenarios=loanRequest.getScenarios();
-        if(scenarios!=null) {
-            for (Scenario scenario : scenarios) {
-                ScenarioProcessor scenarioProcessor = scenarioProcessorFactory.getScenarioProcessor(scenario.getScenarioType());
-                schedule=scenarioProcessor.processScenario(scenario, schedule, loanParameters);
-
-                List<ScheduleEntry> entries = schedule.getSchedule();
-
-                for(int i = 0; i < entries.size(); i++){
-                    if(entries.get(i)
-                            .getOutstandingPrincipal()
-                            .compareTo(BigDecimal.ZERO) == 0){
-                        entries.subList(i + 1, entries.size()).clear();
-                        break;
-                    }
-                }
-            }
-        }
-
-        return schedule;
+        return scheduleEntries;
     }
 }

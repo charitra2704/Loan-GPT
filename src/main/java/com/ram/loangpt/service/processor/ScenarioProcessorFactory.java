@@ -15,9 +15,6 @@ public class ScenarioProcessorFactory {
     private LumpsumPaymentScenarioProcessor lumpsumPaymentScenarioProcessor;
 
     @Autowired
-    private InterestRateChangeScenarioProcessor interestRateChangeScenarioProcessor;
-
-    @Autowired
     private RecurringEmiScenarioProcessor recurringEmiScenarioProcessor;
 
     @Autowired
@@ -29,9 +26,6 @@ public class ScenarioProcessorFactory {
         switch (scenarioType) {
             case ScenarioType.LUMP_SUM_PREPAYMENT -> {
                 return lumpsumPaymentScenarioProcessor;
-            }
-            case ScenarioType.INTEREST_RATE_CHANGE -> {
-                return interestRateChangeScenarioProcessor;
             }
             case ScenarioType.RECURRING_EMI_CHANGE -> {
                 return recurringEmiScenarioProcessor;

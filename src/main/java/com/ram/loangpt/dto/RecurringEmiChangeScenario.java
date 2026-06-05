@@ -2,21 +2,23 @@ package com.ram.loangpt.dto;
 
 import com.ram.loangpt.enums.FrequencyType;
 
+import java.math.BigDecimal;
+
 /**
  * @author chari
  **/
 public class RecurringEmiChangeScenario extends Scenario {
 
-    private Float percentage;
+    private BigDecimal emiChangedRate;
     private FrequencyType frequencyType;
 
 
-    public Float getPercentage() {
-        return percentage;
+    public BigDecimal getEmiChangedRate() {
+        return emiChangedRate;
     }
 
-    public void setPercentage(Float percentage) {
-        this.percentage = percentage;
+    public void setEmiChangedRate(BigDecimal percentage) {
+        this.emiChangedRate = percentage;
     }
 
     public FrequencyType getFrequencyType() {

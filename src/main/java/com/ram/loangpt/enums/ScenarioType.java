@@ -6,6 +6,5 @@ package com.ram.loangpt.enums;
 public enum ScenarioType {
     LUMP_SUM_PREPAYMENT,
     RECURRING_PREPAYMENT,
-    INTEREST_RATE_CHANGE,
     RECURRING_EMI_CHANGE
 }

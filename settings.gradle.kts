@@ -1,1 +1,1 @@
-rootProject.name = "loangpt"
+rootProject.name="loangpt"
