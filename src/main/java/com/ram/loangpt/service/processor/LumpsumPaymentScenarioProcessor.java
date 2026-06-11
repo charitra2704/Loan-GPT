@@ -15,8 +15,12 @@ import java.util.function.BiFunction;
 @Service
 public class LumpsumPaymentScenarioProcessor implements ScenarioProcessor {
     public List<ScheduleEntry> processScenario(Scenario scenario, List<ScheduleEntry> schedule, LoanParameters loanParameters){
+        if(scenario.getStartMonth()>schedule.size())
+            throw new IllegalArgumentException("Start Month cannot exceed Tenure: "+scenario.getStartMonth());
         if(scenario instanceof LumpSumPaymentScenario lumpSumPaymentScenario) {
-            BigDecimal currentOutstandingPrincipal = BigDecimal.ZERO;
+            if(lumpSumPaymentScenario.getAmount().compareTo(BigDecimal.ZERO)<0)
+                throw new IllegalArgumentException("Lump Sum amount cannot be negative: "+lumpSumPaymentScenario.getAmount());
+            BigDecimal currentOutstandingPrincipal = loanParameters.getPrincipal();
             List<ScheduleEntry> response = new ArrayList<>();
             for (ScheduleEntry sc: schedule) {
                 if (sc.getInstallmentNumber().equals(scenario.getStartMonth())) {

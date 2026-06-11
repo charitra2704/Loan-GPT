@@ -1,5 +1,6 @@
 package com.ram.loangpt.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ram.loangpt.enums.FrequencyType;
 
 import java.math.BigDecimal;
@@ -7,6 +8,7 @@ import java.math.BigDecimal;
 /**
  * @author chari
  **/
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RecurringEmiChangeScenario extends Scenario {
 
     private BigDecimal emiChangedRate;

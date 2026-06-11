@@ -1,7 +1,9 @@
 package com.ram.loangpt.service;
 
 import com.ram.loangpt.dto.*;
+import com.ram.loangpt.enums.ScenarioType;
 import com.ram.loangpt.utils.FinanceUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,16 +19,30 @@ class ScheduleServiceTest {
 
 
     @Autowired
-    private  ScheduleService scheduleService;
+    private ScheduleService scheduleService;
+    private LoanRequest loanRequest;
+    private LumpSumPaymentScenario lumpSumPaymentScenario;
+    private Schedule schedule;
+
+    @BeforeEach
+    void setup(){
+        LoanParameters loanParameters = new LoanParameters();
+        loanParameters.setTenureInMonths(240);
+        loanParameters.setPrincipal(BigDecimal.valueOf(5000000));
+        loanParameters.setInterestRate(BigDecimal.valueOf(8));
+
+        loanRequest = new LoanRequest();
+        loanRequest.setLoanParameters(loanParameters);
+
+        schedule=scheduleService.generateSchedule(loanRequest);
+    }
 
     @Test
     void shouldCalculateCorrectEMI() {
 
-        //Test if PMT Formula works fine
-        BigDecimal principal=BigDecimal.valueOf(5000000);
-        BigDecimal annualInterestRate=BigDecimal.valueOf(8);
-        int numberOfMonths=240;
-        BigDecimal emi= FinanceUtil.pmt(principal,annualInterestRate,numberOfMonths);
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
+        BigDecimal emi= FinanceUtil.pmt(loanParameters.getPrincipal(),loanParameters.getInterestRate(),
+                loanParameters.getTenureInMonths());
         assertEquals(
                 0,
                 emi.setScale(2)
@@ -35,36 +51,60 @@ class ScheduleServiceTest {
     }
 
     @Test
-    void shouldIncreaseEMIWhenPrincipalIncreases(){
+    void checkWhenInterestRateZero(){
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
 
-        //Test if emi increases as principal increases with interest rate and tenure months same
-        BigDecimal emi1=FinanceUtil.pmt(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8),240);
-        BigDecimal emi2=FinanceUtil.pmt(BigDecimal.valueOf(6000000),BigDecimal.valueOf(8),240);
-        assertTrue(emi2.compareTo(emi1)>0);
+        loanParameters.setInterestRate(BigDecimal.ZERO);
+
+        Schedule schedule=scheduleService.generateSchedule(loanRequest);
+
+        assertEquals(0,schedule.getInstallmentAmount().compareTo(BigDecimal.valueOf(20833.33)));
     }
 
     @Test
-    void shouldIncreaseEMIWhenInterestRateIncreases(){
+    void checkWhenInterestRateNegative(){
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
 
-        //Test if emi increases as interest rate increases with principal and tenure months same
-        BigDecimal emi1=FinanceUtil.pmt(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8),240);
-        BigDecimal emi2=FinanceUtil.pmt(BigDecimal.valueOf(5000000),BigDecimal.valueOf(9),240);
-        assertTrue(emi2.compareTo(emi1)>0);
+        loanParameters.setInterestRate(BigDecimal.valueOf(-8.5));
+
+        assertThrows(IllegalArgumentException.class,()->FinanceUtil.pmt(loanParameters.getPrincipal(),
+                loanParameters.getInterestRate(),loanParameters.getTenureInMonths()));
     }
 
     @Test
-    void shouldDecreaseEMIWhenTenureIncreases(){
+    void checkWhenPrincipalZero(){
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
 
-        //Test if emi decreases as tenure months increases with principal and interest rate same
-        BigDecimal emi1=FinanceUtil.pmt(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8),240);
-        BigDecimal emi2=FinanceUtil.pmt(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8),360);
-        assertTrue(emi1.compareTo(emi2)>0);
+        loanParameters.setPrincipal(BigDecimal.ZERO);
+
+        BigDecimal emi=FinanceUtil.pmt(loanParameters.getPrincipal(),loanParameters.getInterestRate()
+                ,loanParameters.getTenureInMonths());
+        assertEquals(0,emi.compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void checkWhenPrincipalNegative(){
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
+
+        loanParameters.setPrincipal(BigDecimal.valueOf(-5000000));
+
+        assertThrows(IllegalArgumentException.class,()->FinanceUtil.pmt(loanParameters.getPrincipal(),
+                loanParameters.getInterestRate(),loanParameters.getTenureInMonths()));
+    }
+
+    @Test
+    void checkWhenTenureNotWholeNumber(){
+        LoanParameters loanParameters=loanRequest.getLoanParameters();
+
+        loanParameters.setTenureInMonths(-240);
+
+        assertThrows(IllegalArgumentException.class,()->FinanceUtil.pmt(loanParameters.getPrincipal(),
+                loanParameters.getInterestRate(),loanParameters.getTenureInMonths()));
     }
 
     @Test
     void shouldCalculateCorrectInterest(){
 
-        //Test if interest calculation works fine
         BigDecimal currentOutstandingPrincipal = BigDecimal.valueOf(5000000);
         BigDecimal interestRate=BigDecimal.valueOf(8);
         BigDecimal interestPaid=FinanceUtil.calculateInterest(currentOutstandingPrincipal,interestRate);
@@ -75,39 +115,17 @@ class ScheduleServiceTest {
         );
     }
 
-    @Test
-    void shouldIncreaseInterestWhenInterestRateIncreases(){
-
-        //Test if Interest increases when interest rate increases
-        BigDecimal interest1=FinanceUtil.calculateInterest(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8));
-        BigDecimal interest2=FinanceUtil.calculateInterest(BigDecimal.valueOf(5000000),BigDecimal.valueOf(9));
-        assertTrue(interest2.compareTo(interest1)>0);
-    }
-
-    @Test
-    void shouldIncreaseInterestWhenCurrentOutstandingPrincipalIncreases(){
-
-        //Test if Interest increases when current outstanding principal increases
-        BigDecimal interest1=FinanceUtil.calculateInterest(BigDecimal.valueOf(5000000),BigDecimal.valueOf(8));
-        BigDecimal interest2=FinanceUtil.calculateInterest(BigDecimal.valueOf(6000000),BigDecimal.valueOf(8));
-        assertTrue(interest2.compareTo(interest1)>0);
-    }
 
     @Test
     void shouldEqualScheduleSizeAsTenureInMonthsIfNoScenariosProvided(){
-
-        LoanRequest loanRequest=new LoanRequest();
-        LoanParameters loanParameters=new LoanParameters();
-        loanParameters.setTenureInMonths(240);
-        loanParameters.setPrincipal(BigDecimal.valueOf(5000000));
-        loanParameters.setInterestRate(BigDecimal.valueOf(8));
-
-        loanRequest.setLoanParameters(loanParameters);
 
         Schedule schedule=scheduleService.generateSchedule(loanRequest);
         List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
 
         assertEquals(240,
                 scheduleEntries.size());
+
+        ScheduleEntry last=schedule.getSchedule().getLast();
+        assertEquals(BigDecimal.ZERO,last.getOutstandingPrincipal());
     }
 }

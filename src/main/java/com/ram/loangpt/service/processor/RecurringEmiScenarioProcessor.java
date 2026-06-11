@@ -28,7 +28,7 @@ public class RecurringEmiScenarioProcessor implements ScenarioProcessor {
                 case SEMI_ANNUALLY -> 6;
             };
 
-            BigDecimal currentOutstandingPrincipal = BigDecimal.ZERO;
+            BigDecimal currentOutstandingPrincipal = loanParameters.getPrincipal();
 
             List<ScheduleEntry> response = new ArrayList<>();
             BigDecimal currentEmi = BigDecimal.ZERO;

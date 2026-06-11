@@ -3,6 +3,7 @@ package com.ram.loangpt.service.processor;
 import com.ram.loangpt.dto.*;
 import com.ram.loangpt.enums.ScenarioType;
 import com.ram.loangpt.service.ScheduleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,49 +23,59 @@ import static org.junit.jupiter.api.Assertions.*;
 class LumpsumPaymentScenarioProcessorTest {
     @Autowired
     private ScheduleService scheduleService;
+    private LoanRequest loanRequest;
+    private LumpSumPaymentScenario lumpSumPaymentScenario;
+    private Schedule scheduleWithLumpSum;
+    private Schedule scheduleWithoutLumpSum;
 
-    LoanRequest loanRequest=new LoanRequest();
-    LoanParameters loanParameters=new LoanParameters();
-    List<Scenario> scenarios=new ArrayList<>();
-    LumpSumPaymentScenario lumpSumPaymentScenario=new LumpSumPaymentScenario();
-    Schedule schedule=new Schedule();
-
-    void setInput(){
+    @BeforeEach
+    void setup(){
+        LoanParameters loanParameters = new LoanParameters();
         loanParameters.setTenureInMonths(240);
         loanParameters.setPrincipal(BigDecimal.valueOf(5000000));
         loanParameters.setInterestRate(BigDecimal.valueOf(8));
 
+        lumpSumPaymentScenario = new LumpSumPaymentScenario();
         lumpSumPaymentScenario.setStartMonth(36);
         lumpSumPaymentScenario.setAmount(BigDecimal.valueOf(300000));
         lumpSumPaymentScenario.setScenarioType(ScenarioType.LUMP_SUM_PREPAYMENT);
+
+        List<Scenario> scenarios = new ArrayList<>();
         scenarios.add(lumpSumPaymentScenario);
 
+        LoanRequest loanRequest = new LoanRequest();
         loanRequest.setLoanParameters(loanParameters);
+
+        scheduleWithoutLumpSum=scheduleService.generateSchedule(loanRequest);
+
         loanRequest.setScenarios(scenarios);
-
-        schedule=scheduleService.generateSchedule(loanRequest);
+        scheduleWithLumpSum =scheduleService.generateSchedule(loanRequest);
     }
 
-    @Test
-    void shouldIncreaseExtraPaymentIfMonthIsStartMonth(){
-
-        setInput();
-
-        Schedule schedule=scheduleService.generateSchedule(loanRequest);
-        List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
-
-
-        assertTrue(scheduleEntries.get(lumpSumPaymentScenario.getStartMonth()-1).getExtraPayment().compareTo(
-                lumpSumPaymentScenario.getAmount())>=0);
-    }
 
     @Test
-    void shouldOutstandingPrincipalBeZeroForLastInstallment(){
+    void shouldDecreaseOutstandingPrincipalIfMonthIsStartMonth(){
+        List<ScheduleEntry> scheduleEntriesWithoutLumpSum=scheduleWithoutLumpSum.getSchedule();
+        List<ScheduleEntry> scheduleEntriesWithLumpSum=scheduleWithLumpSum.getSchedule();
 
-        setInput();
+        for(ScheduleEntry scheduleEntry: scheduleEntriesWithLumpSum) {
+            if(scheduleEntry.getInstallmentNumber().compareTo(lumpSumPaymentScenario.getStartMonth())==0)
+                assertTrue(scheduleEntry
+                        .getOutstandingPrincipal()
+                        .compareTo(scheduleEntriesWithoutLumpSum.get(scheduleEntry.getInstallmentNumber())
+                                .getOutstandingPrincipal()) < 0);
+        }
 
-        ScheduleEntry last=schedule.getSchedule().getLast();
-
+        ScheduleEntry last=scheduleEntriesWithLumpSum.getLast();
         assertEquals(BigDecimal.ZERO,last.getOutstandingPrincipal());
     }
+
+    @Test
+    void checkIfTenureReduces(){
+        List<ScheduleEntry> scheduleEntriesWithoutLumpSum=scheduleWithoutLumpSum.getSchedule();
+        List<ScheduleEntry> scheduleEntriesWithLumpSum=scheduleWithLumpSum.getSchedule();
+
+        assertTrue(scheduleEntriesWithLumpSum.size()<scheduleEntriesWithoutLumpSum.size());
+    }
+
 }

@@ -4,6 +4,7 @@ import com.ram.loangpt.dto.*;
 import com.ram.loangpt.enums.FrequencyType;
 import com.ram.loangpt.enums.ScenarioType;
 import com.ram.loangpt.service.ScheduleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,25 +23,28 @@ class RecurringPaymentScenarioProcessorTest {
 
     @Autowired
     private ScheduleService scheduleService;
+    private  LoanRequest loanRequest;
+    private  RecurringPaymentScenario recurringPaymentScenario;
+    private Schedule schedule;
 
-    private final LoanRequest loanRequest=new LoanRequest();
-    private final  LoanParameters loanParameters=new LoanParameters();
-    private final List<Scenario> scenarios=new ArrayList<>();
-    private final RecurringPaymentScenario recurringPaymentScenario=new RecurringPaymentScenario();
-    private Schedule schedule=new Schedule();
-
-    void setInput(){
+    @BeforeEach
+    void setup(){
+        LoanParameters loanParameters=new LoanParameters();
         loanParameters.setTenureInMonths(240);
         loanParameters.setPrincipal(BigDecimal.valueOf(5000000));
         loanParameters.setInterestRate(BigDecimal.valueOf(8));
 
+        recurringPaymentScenario=new RecurringPaymentScenario();
         recurringPaymentScenario.setStartMonth(48);
         recurringPaymentScenario.setAmount(BigDecimal.valueOf(25000));
         recurringPaymentScenario.setScenarioType(ScenarioType.RECURRING_PREPAYMENT);
         recurringPaymentScenario.setFrequencyType(FrequencyType.ANNUALLY);
-        scenarios.add(recurringPaymentScenario);
-        loanRequest.setLoanParameters(loanParameters);
 
+        List<Scenario> scenarios = new ArrayList<>();
+        scenarios.add(recurringPaymentScenario);
+
+        loanRequest=new LoanRequest();
+        loanRequest.setLoanParameters(loanParameters);
         loanRequest.setScenarios(scenarios);
 
         schedule=scheduleService.generateSchedule(loanRequest);
@@ -48,8 +52,6 @@ class RecurringPaymentScenarioProcessorTest {
 
     @Test
     void shouldIncreaseExtraPaymentWhenFrequencyMatches(){
-
-        setInput();
 
         int startMonth=recurringPaymentScenario.getStartMonth();
         List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
@@ -67,15 +69,10 @@ class RecurringPaymentScenarioProcessorTest {
                         recurringPaymentScenario.getAmount())>=0);
             }
         }
-    }
-
-    @Test
-    void shouldOutstandingPrincipalBeZeroForLastInstallment(){
-
-        setInput();
 
         ScheduleEntry last=schedule.getSchedule().getLast();
 
         assertEquals(BigDecimal.ZERO,last.getOutstandingPrincipal());
     }
+
 }

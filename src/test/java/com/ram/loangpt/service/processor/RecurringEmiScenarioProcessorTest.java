@@ -4,6 +4,7 @@ import com.ram.loangpt.dto.*;
 import com.ram.loangpt.enums.FrequencyType;
 import com.ram.loangpt.enums.ScenarioType;
 import com.ram.loangpt.service.ScheduleService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,25 +23,28 @@ import static org.junit.jupiter.api.Assertions.*;
 class RecurringEmiScenarioProcessorTest {
     @Autowired
     private ScheduleService scheduleService;
+    private  LoanRequest loanRequest;
+    private  RecurringEmiChangeScenario recurringEmiChangeScenario;
+    private Schedule schedule;
 
-    private final LoanRequest loanRequest=new LoanRequest();
-    private final LoanParameters loanParameters=new LoanParameters();
-    private final List<Scenario> scenarios=new ArrayList<>();
-    private final RecurringEmiChangeScenario recurringEmiChangeScenario=new RecurringEmiChangeScenario();
-    private Schedule schedule=new Schedule();
-
+    @BeforeEach
     void setInput(){
+        LoanParameters loanParameters = new LoanParameters();
         loanParameters.setTenureInMonths(240);
         loanParameters.setPrincipal(BigDecimal.valueOf(5000000));
         loanParameters.setInterestRate(BigDecimal.valueOf(8));
 
+        recurringEmiChangeScenario=new RecurringEmiChangeScenario();
         recurringEmiChangeScenario.setStartMonth(60);
         recurringEmiChangeScenario.setEmiChangedRate(BigDecimal.valueOf(5));
         recurringEmiChangeScenario.setScenarioType(ScenarioType.RECURRING_EMI_CHANGE);
         recurringEmiChangeScenario.setFrequencyType(FrequencyType.ANNUALLY);
-        scenarios.add(recurringEmiChangeScenario);
-        loanRequest.setLoanParameters(loanParameters);
 
+        List<Scenario> scenarios = new ArrayList<>();
+        scenarios.add(recurringEmiChangeScenario);
+
+        loanRequest=new LoanRequest();
+        loanRequest.setLoanParameters(loanParameters);
         loanRequest.setScenarios(scenarios);
 
         schedule=scheduleService.generateSchedule(loanRequest);
@@ -48,23 +52,12 @@ class RecurringEmiScenarioProcessorTest {
 
     @Test
     void checkIfEmiIsLessThanInterest(){
-        setInput();
 
         List<ScheduleEntry> scheduleEntries=schedule.getSchedule();
 
         for(ScheduleEntry scheduleEntry:scheduleEntries){
             assertTrue(scheduleEntry.getInstallmentAmount().compareTo(scheduleEntry.getInterest())>=0);
         }
-    }
-
-    @Test
-    void shouldOutstandingPrincipalBeZeroForLastInstallment(){
-
-        setInput();
-
-        ScheduleEntry last=schedule.getSchedule().getLast();
-
-        assertEquals(BigDecimal.ZERO,last.getOutstandingPrincipal());
     }
 
     @Test
@@ -92,5 +85,8 @@ class RecurringEmiScenarioProcessorTest {
 
             currentInstallmentAmount=scheduleEntry.getInstallmentAmount();
         }
+
+        ScheduleEntry last=schedule.getSchedule().getLast();
+        assertEquals(BigDecimal.ZERO,last.getOutstandingPrincipal());
     }
 }

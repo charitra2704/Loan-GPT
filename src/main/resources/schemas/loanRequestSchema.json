@@ -1,0 +1,79 @@
+{
+  "type": "object",
+  "properties": {
+    "loanParameters": {
+      "type": "object",
+      "properties": {
+        "principal": {
+          "type": "number"
+        },
+        "interestRate": {
+          "type": "number"
+        },
+        "tenureInMonths": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "principal",
+        "interestRate",
+        "tenureInMonths"
+      ],
+      "propertyOrdering": [
+        "principal",
+        "interestRate",
+        "tenureInMonths"
+      ]
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scenarioType": {
+            "type": "string",
+            "enum": [
+              "LUMP_SUM_PREPAYMENT",
+              "RECURRING_EMI_CHANGE",
+              "RECURRING_PREPAYMENT"
+            ]
+          },
+          "startMonth": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "emiChangedRate": {
+            "type": "number"
+          },
+          "frequencyType": {
+            "type": "string",
+            "enum": [
+              "MONTHLY",
+              "QUARTERLY",
+              "ANNUALLY",
+              "SEMI_ANNUALLY"
+            ]
+          }
+        },
+        "propertyOrdering": [
+          "scenarioType",
+          "startMonth",
+          "amount",
+          "emiChangedRate",
+          "frequencyType"
+        ]
+      }
+    }
+  },
+  "required": [
+    "loanParameters"
+  ],
+  "propertyOrdering": [
+    "loanParameters",
+    "scenarios"
+  ]
+}
+
+

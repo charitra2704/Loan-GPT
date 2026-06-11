@@ -26,7 +26,7 @@ public class RecurringPaymentScenarioProcessor implements ScenarioProcessor {
                 case ANNUALLY -> 12;
                 case SEMI_ANNUALLY -> 6;
             };
-                    BigDecimal currentOutstandingPrincipal = BigDecimal.ZERO;
+                    BigDecimal currentOutstandingPrincipal = loanParameters.getPrincipal();
                     List<ScheduleEntry> response = new ArrayList<>();
 
                     for (ScheduleEntry sc: schedule) {
