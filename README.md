@@ -2,7 +2,7 @@
 
 ## Overview
 
-A chat like interface which repsonds to loan queries in natural language and simulate prepayment scenarios.
+A chat like interface which responds to loan queries in natural language and simulate prepayment scenarios.
 
 ## Problem Statement
 User wants to
